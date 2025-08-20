@@ -32,7 +32,7 @@ def setup_logger():
     )
 
     file_handler = RotatingFileHandler(
-        'data/trading_bot.log',
+        'trading_bot.log',
         maxBytes=1024 * 1024 * 5,
         backupCount=3,
         encoding='utf-8'
