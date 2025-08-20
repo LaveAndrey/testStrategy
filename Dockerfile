@@ -10,6 +10,7 @@ COPY requirements.txt .
 # Устанавливаем системные зависимости и Python-пакеты
 RUN apt-get update && apt-get install -y \
     build-essential \
+    && pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -21,4 +22,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Команда для запуска торгового бота
-CMD ["python", "teststrategy.py"]
+CMD ["python", "trading_bot.py"]
