@@ -22,4 +22,4 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 
 # Команда для запуска торгового бота
-CMD ["python", "trading_bot.py"]
+CMD ["python", "teststrategy.py"]
