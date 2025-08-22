@@ -569,6 +569,27 @@ class TradingBot:
             logger.error(f"Ошибка расчета RSI: {str(e)}")
             return None
 
+    def calculate_atr(self, symbol):
+        """
+        Расчет ATR на основе последней закрытой свечи (период = ATR_PERIOD = True Range).
+        """
+        try:
+            # Получаем последнюю закрытую свечу из self.data[symbol]
+            if self.data[symbol].empty or len(self.data[symbol]) < 1:
+                logger.warning(f"⚠️ Нет данных о закрытых свечах для {symbol}")
+                return None
+
+            last_closed_candle = self.data[symbol].iloc[-1]
+            true_range = last_closed_candle['high'] - last_closed_candle['low']
+
+            logger.debug(
+                f"📊 Расчет ATR для {symbol}: High={last_closed_candle['high']:.2f}, Low={last_closed_candle['low']:.2f}, True Range={true_range:.4f}")
+            return true_range
+
+        except Exception as e:
+            logger.error(f"Ошибка расчета ATR: {str(e)}")
+            return None
+
     def calculate_macd(self, closes, fast=MACD_FAST, slow=MACD_SLOW, signal=MACD_SIGNAL):
         """
         Реализация MACD как в TradingView
@@ -883,14 +904,27 @@ class TradingBot:
                 return
             position_size = balance * POSITION_SIZE_PERCENT
             leverage = random.randint(LEVERAGE_MIN, LEVERAGE_MAX)
-            tp_adjustment = TAKE_PROFIT / leverage
-            sl_adjustment = STOP_LOSS / leverage
+
+            # Расчет ATR на основе последней закрытой свечи с учетом ATR_PERIOD
+            atr = self.calculate_atr(symbol)
+            if atr is None:
+                logger.warning(
+                    f"⚠️ Не удалось рассчитать ATR для {symbol} с периодом {ATR_PERIOD}, используются стандартные значения TP и SL")
+                tp_adjustment = TAKE_PROFIT / leverage
+                sl_adjustment = STOP_LOSS / leverage
+            else:
+                tp_adjustment = (ATR_MULTIPLIER_TP * atr) / adjusted_price
+                sl_adjustment = (ATR_MULTIPLIER_SL * atr) / adjusted_price
+                logger.info(
+                    f"📊 ATR для {symbol} (последние {ATR_PERIOD} свечи): {atr:.4f}, TP Adjustment: {tp_adjustment:.4f}, SL Adjustment: {sl_adjustment:.4f}")
+
             if side == 'buy':
                 tp_price = adjusted_price * (1 + tp_adjustment)
                 sl_price = adjusted_price * (1 - sl_adjustment)
             else:
                 tp_price = adjusted_price * (1 - tp_adjustment)
                 sl_price = adjusted_price * (1 + sl_adjustment)
+
             position_data = {
                 'symbol': symbol,
                 'side': side,
