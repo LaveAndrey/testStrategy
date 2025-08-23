@@ -804,6 +804,7 @@ class TradingBot:
 
             prev_macd = self.last_macd[symbol]
 
+            # Условия для сигналов остаются прежними, но действия меняются местами
             buy_condition = (rsi < RSI_BUY_THRESHOLD and
                              macd > signal_line and
                              prev_macd is not None and
@@ -817,15 +818,17 @@ class TradingBot:
             logger.debug(f"🎯 ДЕТАЛЬНЫЙ АНАЛИЗ УСЛОВИЙ ДЛЯ {symbol}:")
             logger.debug(f"   Цена: {current_close:.2f}")
             logger.debug(f"   RSI: {rsi:.2f}")
-            logger.debug(f"   📈 BUY УСЛОВИЯ:")
+            logger.debug(f"   📈 BUY УСЛОВИЯ (открываем SELL):")
             logger.debug(f"     RSI {rsi:.2f} < {RSI_BUY_THRESHOLD} = {rsi < RSI_BUY_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} > Signal {signal_line:.4f} = {macd > signal_line}")
-            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd <= signal_line}")
+            logger.debug(
+                f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd <= signal_line}")
             logger.debug(f"     📊 BUY сигнал = {buy_condition}")
-            logger.debug(f"   📉 SELL УСЛОВИЯ:")
+            logger.debug(f"   📉 SELL УСЛОВИЯ (открываем BUY):")
             logger.debug(f"     RSI {rsi:.2f} > {RSI_SELL_THRESHOLD} = {rsi > RSI_SELL_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} < Signal {signal_line:.4f} = {macd < signal_line}")
-            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd >= signal_line}")
+            logger.debug(
+                f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd >= signal_line}")
             logger.debug(f"     📊 SELL сигнал = {sell_condition}")
 
             if prev_macd is not None:
@@ -846,18 +849,19 @@ class TradingBot:
             self.last_macd[symbol] = macd
             self.last_signal[symbol] = signal_line
 
+            # Меняем местами действия: при buy_condition открываем sell, при sell_condition открываем buy
             if buy_condition:
-                logger.info(f"🚀 ОБНАРУЖЕН BUY СИГНАЛ ДЛЯ {symbol}!")
+                logger.info(f"🚀 ОБНАРУЖЕН BUY СИГНАЛ ДЛЯ {symbol}, ОТКРЫВАЕМ SELL!")
                 logger.info(f"   RSI: {rsi:.2f} < {RSI_BUY_THRESHOLD}")
                 logger.info(f"   MACD: {macd:.4f} > Signal: {signal_line:.4f}")
                 logger.info(f"   Пересечение: {prev_macd if prev_macd is not None else 'None'} → {macd:.4f}")
-                await self.open_position(symbol, 'buy')
+                await self.open_position(symbol, 'sell')  # Изменено с 'buy' на 'sell'
             elif sell_condition:
-                logger.info(f"🚀 ОБНАРУЖЕН SELL СИГНАЛ ДЛЯ {symbol}!")
+                logger.info(f"🚀 ОБНАРУЖЕН SELL СИГНАЛ ДЛЯ {symbol}, ОТКРЫВАЕМ BUY!")
                 logger.info(f"   RSI: {rsi:.2f} > {RSI_SELL_THRESHOLD}")
                 logger.info(f"   MACD: {macd:.4f} < Signal: {signal_line:.4f}")
                 logger.info(f"   Пересечение: {prev_macd if prev_macd is not None else 'None'} → {macd:.4f}")
-                await self.open_position(symbol, 'sell')
+                await self.open_position(symbol, 'buy')  # Изменено с 'sell' на 'buy'
             else:
                 logger.debug(f"📊 Сигналов для {symbol} нет")
 
