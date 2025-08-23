@@ -570,24 +570,34 @@ class TradingBot:
             return None
 
     def calculate_atr(self, symbol):
-        """
-        Расчет ATR на основе последней закрытой свечи (период = ATR_PERIOD = True Range).
-        """
+        """Правильный ATR на свечах"""
         try:
-            # Получаем последнюю закрытую свечу из self.data[symbol]
-            if self.data[symbol].empty or len(self.data[symbol]) < 1:
-                logger.warning(f"⚠️ Нет данных о закрытых свечах для {symbol}")
+            # Нужно достаточно свечей для расчета
+            if len(self.data[symbol]) < ATR_PERIOD + 10:
                 return None
 
-            last_closed_candle = self.data[symbol].iloc[-1]
-            true_range = last_closed_candle['high'] - last_closed_candle['low']
+            # Берем последние свечи из ТЕКУЩЕЙ сессии
+            recent_candles = self.data[symbol].tail(ATR_PERIOD + 10)
 
-            logger.debug(
-                f"📊 Расчет ATR для {symbol}: High={last_closed_candle['high']:.2f}, Low={last_closed_candle['low']:.2f}, True Range={true_range:.4f}")
-            return true_range
+            # Классический расчет ATR
+            tr_values = []
+            for i in range(1, len(recent_candles)):
+                high = recent_candles.iloc[i]['high']
+                low = recent_candles.iloc[i]['low']
+                prev_close = recent_candles.iloc[i - 1]['close']
+
+                tr1 = high - low
+                tr2 = abs(high - prev_close)
+                tr3 = abs(low - prev_close)
+                tr = max(tr1, tr2, tr3)
+                tr_values.append(tr)
+
+            # SMA для ATR
+            atr = sum(tr_values[-ATR_PERIOD:]) / ATR_PERIOD
+            return atr
 
         except Exception as e:
-            logger.error(f"Ошибка расчета ATR: {str(e)}")
+            logger.error(f"Ошибка ATR: {str(e)}")
             return None
 
     def calculate_macd(self, closes, fast=MACD_FAST, slow=MACD_SLOW, signal=MACD_SIGNAL):
@@ -804,7 +814,6 @@ class TradingBot:
 
             prev_macd = self.last_macd[symbol]
 
-            # Условия для сигналов остаются прежними, но действия меняются местами
             buy_condition = (rsi < RSI_BUY_THRESHOLD and
                              macd > signal_line and
                              prev_macd is not None and
@@ -818,17 +827,15 @@ class TradingBot:
             logger.debug(f"🎯 ДЕТАЛЬНЫЙ АНАЛИЗ УСЛОВИЙ ДЛЯ {symbol}:")
             logger.debug(f"   Цена: {current_close:.2f}")
             logger.debug(f"   RSI: {rsi:.2f}")
-            logger.debug(f"   📈 BUY УСЛОВИЯ (открываем SELL):")
+            logger.debug(f"   📈 BUY УСЛОВИЯ:")
             logger.debug(f"     RSI {rsi:.2f} < {RSI_BUY_THRESHOLD} = {rsi < RSI_BUY_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} > Signal {signal_line:.4f} = {macd > signal_line}")
-            logger.debug(
-                f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd <= signal_line}")
+            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd <= signal_line}")
             logger.debug(f"     📊 BUY сигнал = {buy_condition}")
-            logger.debug(f"   📉 SELL УСЛОВИЯ (открываем BUY):")
+            logger.debug(f"   📉 SELL УСЛОВИЯ:")
             logger.debug(f"     RSI {rsi:.2f} > {RSI_SELL_THRESHOLD} = {rsi > RSI_SELL_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} < Signal {signal_line:.4f} = {macd < signal_line}")
-            logger.debug(
-                f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd >= signal_line}")
+            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd >= signal_line}")
             logger.debug(f"     📊 SELL сигнал = {sell_condition}")
 
             if prev_macd is not None:
@@ -849,19 +856,18 @@ class TradingBot:
             self.last_macd[symbol] = macd
             self.last_signal[symbol] = signal_line
 
-            # Меняем местами действия: при buy_condition открываем sell, при sell_condition открываем buy
             if buy_condition:
-                logger.info(f"🚀 ОБНАРУЖЕН BUY СИГНАЛ ДЛЯ {symbol}, ОТКРЫВАЕМ SELL!")
+                logger.info(f"🚀 ОБНАРУЖЕН BUY СИГНАЛ ДЛЯ {symbol}!")
                 logger.info(f"   RSI: {rsi:.2f} < {RSI_BUY_THRESHOLD}")
                 logger.info(f"   MACD: {macd:.4f} > Signal: {signal_line:.4f}")
                 logger.info(f"   Пересечение: {prev_macd if prev_macd is not None else 'None'} → {macd:.4f}")
-                await self.open_position(symbol, 'sell')  # Изменено с 'buy' на 'sell'
+                await self.open_position(symbol, 'buy')
             elif sell_condition:
-                logger.info(f"🚀 ОБНАРУЖЕН SELL СИГНАЛ ДЛЯ {symbol}, ОТКРЫВАЕМ BUY!")
+                logger.info(f"🚀 ОБНАРУЖЕН SELL СИГНАЛ ДЛЯ {symbol}!")
                 logger.info(f"   RSI: {rsi:.2f} > {RSI_SELL_THRESHOLD}")
                 logger.info(f"   MACD: {macd:.4f} < Signal: {signal_line:.4f}")
                 logger.info(f"   Пересечение: {prev_macd if prev_macd is not None else 'None'} → {macd:.4f}")
-                await self.open_position(symbol, 'buy')  # Изменено с 'sell' на 'buy'
+                await self.open_position(symbol, 'sell')
             else:
                 logger.debug(f"📊 Сигналов для {symbol} нет")
 
@@ -909,25 +915,27 @@ class TradingBot:
             position_size = balance * POSITION_SIZE_PERCENT
             leverage = random.randint(LEVERAGE_MIN, LEVERAGE_MAX)
 
-            # Расчет ATR на основе последней закрытой свечи с учетом ATR_PERIOD
+            # Расчет ATR с периодом из конфига
             atr = self.calculate_atr(symbol)
             if atr is None:
-                logger.warning(
-                    f"⚠️ Не удалось рассчитать ATR для {symbol} с периодом {ATR_PERIOD}, используются стандартные значения TP и SL")
-                tp_adjustment = TAKE_PROFIT / leverage
-                sl_adjustment = STOP_LOSS / leverage
+                # fallback логика
+                tp_percent = 0.02  # 2%
+                sl_percent = 0.01  # 1%
             else:
-                tp_adjustment = (ATR_MULTIPLIER_TP * atr) / adjusted_price
-                sl_adjustment = (ATR_MULTIPLIER_SL * atr) / adjusted_price
-                logger.info(
-                    f"📊 ATR для {symbol} (последние {ATR_PERIOD} свечи): {atr:.4f}, TP Adjustment: {tp_adjustment:.4f}, SL Adjustment: {sl_adjustment:.4f}")
+                # Считаем проценты ОДИН РАЗ
+                tp_percent = (ATR_MULTIPLIER_TP * atr) / adjusted_price
+                sl_percent = (ATR_MULTIPLIER_SL * atr) / adjusted_price
 
+                # Логируем
+                logger.info(f"🎯 Реальные проценты: SL={sl_percent * 100:.3f}%, TP={tp_percent * 100:.3f}%")
+
+            # Расчет цен
             if side == 'buy':
-                tp_price = adjusted_price * (1 + tp_adjustment)
-                sl_price = adjusted_price * (1 - sl_adjustment)
+                tp_price = adjusted_price * (1 + tp_percent)  # Используем рассчитанный процент
+                sl_price = adjusted_price * (1 - sl_percent)
             else:
-                tp_price = adjusted_price * (1 - tp_adjustment)
-                sl_price = adjusted_price * (1 + sl_adjustment)
+                tp_price = adjusted_price * (1 - tp_percent)
+                sl_price = adjusted_price * (1 + sl_percent)
 
             position_data = {
                 'symbol': symbol,
@@ -944,8 +952,7 @@ class TradingBot:
             logger.info(f"Цена входа: {adjusted_price:.2f} (без проскальзывания: {current_price:.2f})")
             logger.info(f"Размер позиции: {position_size:.2f} USDT")
             logger.info(f"Плечо: {leverage}x")
-            logger.info(
-                f"TP: {tp_price:.2f} ({tp_adjustment * 100:.4f}%), SL: {sl_price:.2f} ({sl_adjustment * 100:.4f}%)")
+            logger.info(f"TP: {tp_price:.2f} ({tp_percent * 100:.4f}%), SL: {sl_price:.2f} ({sl_percent * 100:.4f}%)")
             logger.info(f"✅ Успешно открыта позиция {side} по {symbol}")
             logger.info(f"📌 ID: {position_id} | Цена: {adjusted_price:.2f}")
             logger.info(f"💵 Размер: {position_size:.2f} USDT | Плечо: {leverage}x")
