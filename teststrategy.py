@@ -1189,7 +1189,7 @@ class TradingBot:
 if __name__ == "__main__":
     logger.info("🛠️ Инициализация парсера аргументов...")
     parser = argparse.ArgumentParser(description="Торговый бот")
-    parser.add_argument('--duration', type=int, default=86400, help='Длительность теста в секундах')
+    parser.add_argument('--duration', type=int, default=None, help='Длительность теста в секундах')
     parser.add_argument('--balance', type=float, default=INITIAL_BALANCE, help='Начальный баланс в USDT')
     args = parser.parse_args()
     logger.info(f"⚙️ Параметры запуска: duration={args.duration}, balance={args.balance}")
