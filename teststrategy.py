@@ -705,7 +705,7 @@ class TradingBot:
 
             # Обрабатываем индикаторы каждые 50 тиков
             if current_tick_count % 25 == 0:
-                logger.info(f"🔍 Расчет индикаторов для {symbol} (тик #{current_tick_count})")
+                #logger.info(f"🔍 Расчет индикаторов для {symbol} (тик #{current_tick_count})")
                 await self.process_indicators(symbol)
 
             await self.monitor_positions(symbol, price)
@@ -792,9 +792,9 @@ class TradingBot:
                 logger.debug(f"⚠️ MACD не рассчитан")
                 return
 
-            logger.info(
-                f"📈 Индикаторы для {symbol}: RSI={rsi:.2f}, MACD={macd:.4f}, Signal={signal_line:.4f}, Hist={hist:.4f}, Price={current_close:.2f}"
-            )
+            #logger.info(
+            #    f"📈 Индикаторы для {symbol}: RSI={rsi:.2f}, MACD={macd:.4f}, Signal={signal_line:.4f}, Hist={hist:.4f}, Price={current_close:.2f}"
+            #)
             logger.debug(f"📊 Условия: RSI < {RSI_BUY_THRESHOLD} = {rsi < RSI_BUY_THRESHOLD}, "
                          f"RSI > {RSI_SELL_THRESHOLD} = {rsi > RSI_SELL_THRESHOLD}, "
                          f"MACD > Signal = {macd > signal_line}, "
