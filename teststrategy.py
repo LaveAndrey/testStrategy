@@ -813,16 +813,19 @@ class TradingBot:
             logger.debug(f"💾 Текущие индикаторы сохранены в БД (тик #{current_tick_count})")
 
             prev_macd = self.last_macd[symbol]
+            prev_signal = self.last_signal[symbol]
 
             buy_condition = (rsi < RSI_BUY_THRESHOLD and
                              macd > signal_line and
                              prev_macd is not None and
-                             prev_macd <= signal_line)
+                             self.last_signal[symbol] is not None and
+                             prev_macd <= prev_signal)  # ← Сравниваем с ПРЕДЫДУЩИМ Signal!
 
             sell_condition = (rsi > RSI_SELL_THRESHOLD and
                               macd < signal_line and
                               prev_macd is not None and
-                              prev_macd >= signal_line)
+                              self.last_signal[symbol] is not None and
+                              prev_macd >= prev_signal)  # ← Сравниваем с ПРЕДЫДУЩИМ Signal!
 
             logger.debug(f"🎯 ДЕТАЛЬНЫЙ АНАЛИЗ УСЛОВИЙ ДЛЯ {symbol}:")
             logger.debug(f"   Цена: {current_close:.2f}")
@@ -830,12 +833,12 @@ class TradingBot:
             logger.debug(f"   📈 BUY УСЛОВИЯ:")
             logger.debug(f"     RSI {rsi:.2f} < {RSI_BUY_THRESHOLD} = {rsi < RSI_BUY_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} > Signal {signal_line:.4f} = {macd > signal_line}")
-            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd <= signal_line}")
+            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} <= Prev Signal {prev_signal if prev_signal is not None else 'None'} = {prev_macd is not None and prev_signal is not None and prev_macd <= prev_signal}")
             logger.debug(f"     📊 BUY сигнал = {buy_condition}")
             logger.debug(f"   📉 SELL УСЛОВИЯ:")
             logger.debug(f"     RSI {rsi:.2f} > {RSI_SELL_THRESHOLD} = {rsi > RSI_SELL_THRESHOLD}")
             logger.debug(f"     MACD {macd:.4f} < Signal {signal_line:.4f} = {macd < signal_line}")
-            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Signal {signal_line:.4f} = {prev_macd is not None and prev_macd >= signal_line}")
+            logger.debug(f"     Prev MACD {prev_macd if prev_macd is not None else 'None'} >= Prev Signal {prev_signal if prev_signal is not None else 'None'} = {prev_macd is not None and prev_signal is not None and prev_macd >= prev_signal}")
             logger.debug(f"     📊 SELL сигнал = {sell_condition}")
 
             if prev_macd is not None:
